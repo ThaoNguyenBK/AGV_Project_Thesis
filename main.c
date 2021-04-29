@@ -53,7 +53,7 @@ float xa=0,y=1,flag=0,z=0,t=0;
 //uint16_t crc =0;
 //uint8_t crc1,crc2;
 uint8_t mess[6] ={ 0x11, 0x03, 0x00, 0x6B, 0x00, 0x03};
-uint8_t currentNode,preNode =0;
+uint8_t currentNode,preNode =0, initPickNode = 55;
 uint8_t pre_Orient = 'N';
 //uint8_t PathByteCount_Run = 9;
 extern uint8_t PathByteCount_Run;
@@ -222,11 +222,13 @@ int main(void)
 						//  pre_Orient = Path_Run[2];
 							flagPathReceived = 0;
 						  flagPathRunComplete = 0;
+						  PIDflag = 1;
 				 } 
 				 if (TM_MFRC522_Check(CardID) == MI_OK)     // them vao && flagCheckRFID == 0 OR ket hop voi preCurrentNode
 				 {
 				   flagCheckRFID = 1;			
 					  RunPath(); 
+					// Reverse();
 				 }
 				 else 
 				 {
@@ -416,8 +418,8 @@ void Reverse()
 	Run_Motor(RIGHT_MOTOR, 0);
 	delay_ms(500);
 	
-	Run_Motor(LEFT_MOTOR,-43);
-	Run_Motor(RIGHT_MOTOR,41);
+	Run_Motor(LEFT_MOTOR,-42);
+	Run_Motor(RIGHT_MOTOR,38);
 	//delay_ms(1900);
 	
 /*		 line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
@@ -429,7 +431,7 @@ void Reverse()
 	}
 	*/
 	
-	while(pos_right < 23 || pos_left >-23)
+	while(pos_right < 24 || pos_left >-24)
 	{
 		pos_right = ENC_Position(ENCR_TIM,363,pos_right);
 		pos_left = ENC_Position(ENCL_TIM,363,pos_left);
@@ -480,8 +482,10 @@ void Pick()
 			Run_Motor(LEFT_MOTOR, -30);
 	    Run_Motor(RIGHT_MOTOR, -30);
 	    delay_ms(1000);
-						Run_Motor(LEFT_MOTOR,0 );
+			
+			Run_Motor(LEFT_MOTOR,0 );
 	    Run_Motor(RIGHT_MOTOR,0);
+			
 			positionLiftGoal = -10;
 			delay_ms(50);
 			while(!flagPickDropComplete)
@@ -501,10 +505,11 @@ void Pick()
 			Run_Motor(LEFT_MOTOR, -30);
 	    Run_Motor(RIGHT_MOTOR, -30);
 	    delay_ms(1000);
-						Run_Motor(LEFT_MOTOR,0 );
-	    Run_Motor(RIGHT_MOTOR,0);
-			positionLiftGoal = -50;
 			
+			Run_Motor(LEFT_MOTOR,0 );
+	    Run_Motor(RIGHT_MOTOR,0);
+			
+			positionLiftGoal = -50;
 			delay_ms(50);
 			while(!flagPickDropComplete)
 			{
@@ -522,8 +527,10 @@ void Pick()
 			Run_Motor(LEFT_MOTOR, -30);
 	    Run_Motor(RIGHT_MOTOR, -30);
 	    delay_ms(1000);
-						Run_Motor(LEFT_MOTOR,0 );
+			
+			Run_Motor(LEFT_MOTOR,0 );
 	    Run_Motor(RIGHT_MOTOR,0);
+			
 			positionLiftGoal = -90;
 			delay_ms(50);
 			while(!flagPickDropComplete)
@@ -548,8 +555,10 @@ void Drop()
 			Run_Motor(LEFT_MOTOR, -30);
 	    Run_Motor(RIGHT_MOTOR, -30);
 	    delay_ms(1000);
-						Run_Motor(LEFT_MOTOR,0 );
+			
+			Run_Motor(LEFT_MOTOR,0 );
 	    Run_Motor(RIGHT_MOTOR,0);
+			
 			positionLiftGoal = 0;
 			delay_ms(50);
 			while(!flagPickDropComplete)
@@ -558,7 +567,7 @@ void Drop()
 			}
 			
 	}
-	else 	if(Path_Run[PathByteCount_Run  - 1] == 2)
+	 	if(Path_Run[PathByteCount_Run  - 1] == 2)
 	{
 		  positionLiftGoal = -50;
       delay_ms(50);
@@ -569,8 +578,10 @@ void Drop()
 			Run_Motor(LEFT_MOTOR, -30);
 	    Run_Motor(RIGHT_MOTOR, -30);
 	    delay_ms(1000);
-						Run_Motor(LEFT_MOTOR,0 );
+			
+			Run_Motor(LEFT_MOTOR,0 );
 	    Run_Motor(RIGHT_MOTOR,0);
+			
 			positionLiftGoal = -40;
 			delay_ms(50);
 			while(!flagPickDropComplete)
@@ -589,8 +600,10 @@ void Drop()
 			Run_Motor(LEFT_MOTOR, -30);
 	    Run_Motor(RIGHT_MOTOR, -30);
 	    delay_ms(1000);
+			
 			Run_Motor(LEFT_MOTOR,0 );
 	    Run_Motor(RIGHT_MOTOR,0);
+			
 			positionLiftGoal = -80;
 			delay_ms(50);
 			while(!flagPickDropComplete)
@@ -618,11 +631,19 @@ void RunPath()
 	// else
 	// {
 		 // tim index cua node hien tai trong path_run
-	   if( Path_Run[0] == 'P')
+	   if( Path_Run[0] == 'P' && currentNode == initPickNode)
 		 {
-			    delay_PID(2000);
+			   // delay_PID(2000);
           Reverse();
-			    delay_PID(500);
+			    //delay_PID(500);
+			    if(pre_Orient == 'S')
+								   pre_Orient = 'N';
+							else if(pre_Orient == 'N')
+								   pre_Orient = 'S';
+							else if(pre_Orient == 'W')
+								   pre_Orient = 'E';
+							else if(pre_Orient == 'E')
+								   pre_Orient = 'W';
           StopAGV();
           Pick(); 			 
 		 }
@@ -670,7 +691,7 @@ void RunPath()
 						    case 'N':  TurnLeft(); pre_Orient = 'W';  break;
 							  case 'S':  TurnRight(); pre_Orient = 'W'; break;
 							  case 'W':  PIDflag = 1; pre_Orient = 'W'; break;
-							  case 'E':  Reverse();  pre_Orient = 'W'; break;
+							  case 'E':  Reverse();  pre_Orient = 'W';  break;
 						}
 						break;
 		   }	
@@ -679,9 +700,9 @@ void RunPath()
 					  switch(pre_Orient)
 						{
 						    case 'N':  TurnRight(); pre_Orient = 'E'; break;
-						  	case 'S':  TurnLeft(); pre_Orient = 'E'; break;
-						  	case 'W':  Reverse(); pre_Orient = 'E';  break;
-						  	case 'E':  PIDflag = 1; pre_Orient = 'E';break;
+						  	case 'S':  TurnLeft(); pre_Orient = 'E';  break;
+						  	case 'W':  Reverse(); pre_Orient = 'E';   break;
+						  	case 'E':  PIDflag = 1; pre_Orient = 'E'; break;
 						}
 						break;
 			 }
@@ -691,15 +712,26 @@ void RunPath()
 			 // case 'B': {Reverse();  break;}
 			  case 'G': 
         {  
-					 if( Path_Run[indexCurrentNode + 2] == 'N')
+					 if( Path_Run[PathByteCount_Run - 2] == 'N')
 					 {
-					   StopAGV();						 		  
+					   StopAGV();
+						// Reverse();
+             initPickNode = currentNode;						 
 					 } 
-				   else if( Path_Run[indexCurrentNode + 2] == 'D')
+				   else if( Path_Run[PathByteCount_Run - 2] == 'D')
 					 {
-						  delay_PID(2000);
-					    Reverse();
-              delay_PID(500);
+						  //delay_PID(2000);
+						  StopAGV();
+					    Reverse(); 
+						  if(pre_Orient == 'S')
+								   pre_Orient = 'N';
+							else if(pre_Orient == 'N')
+								   pre_Orient = 'S';
+							else if(pre_Orient == 'W')
+								   pre_Orient = 'E';
+							else if(pre_Orient == 'E')
+								   pre_Orient = 'W';
+            //  delay_PID(2000);
 						  StopAGV();
 						  Drop(); 
 					 } 		
