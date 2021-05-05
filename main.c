@@ -247,7 +247,7 @@ int main(void)
 			{			
 				 line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
 				 //u = TM_ADC_ReadVbat(ADC1);
-				 if(flagPathRunComplete == 1 && flagPathReceived == 1) // chay xong path hien tai && nhan frame path moi
+				 if(flagPathRunComplete == 1 && flagPathReceived == 1 && flagCompleteTask == 0) // chay xong path hien tai && nhan frame path moi
          {
 					   
 					    for(int i = 0; i< 30; i++) 
@@ -255,7 +255,7 @@ int main(void)
 								 
 							   Path_Run[i] = pathRunReceive[i];          //luu path nhan duoc vao path_run
 							}
-						PIDflag = 1;
+					//	PIDflag = 1;
 						//  pre_Orient = Path_Run[2];
 							flagPathReceived = 0;
 						  flagPathRunComplete = 0;
@@ -270,7 +270,8 @@ int main(void)
 				 else 
 				 {
 				     flagCheckRFID =0;
-					  // PIDflag = 1;
+					 //  if(flagPathReceived == 1)
+					 //  PIDflag = 1;
 				 } 
 				   
           
@@ -303,7 +304,24 @@ void TIM6_DAC_IRQHandler()	// Overrides the weak implementation of the IRQ in th
 {
 	TIM6->SR = ~TIM_SR_UIF;
 	// Begin interrupt Timer6 10ms code
-	      countDelay++;
+	     // countDelay++;
+	    if(  flagCompleteTask == 1)
+			{
+			  send_frame_completeTask.Header = 0xFFAA;
+				send_frame_completeTask.FunctionCode = 0xC0;
+				send_frame_completeTask.AGVID = 1;
+				send_frame_completeTask.CompleteTask = 'C';
+				send_frame_completeTask.EndOfFrame = 0x0A0D;
+				UART_SendData((uint8_t *) &send_frame_completeTask ,sizeof(send_frame_completeTask)) ;
+			
+				if(flagPathReceived == 1)
+				{
+					flagCompleteTask = 0;
+					if (TM_MFRC522_Check(CardID) != MI_OK)
+					PIDflag = 1;
+				}
+				
+			}
 	
 	      positionLift += Position_Lift(ENCLIFT_TIM,374);
         PID_GA25_Lifting(positionLiftGoal,positionLift);
@@ -328,24 +346,7 @@ void TIM2_IRQHandler()
     if (TIM_GetITStatus(TIM2, TIM_IT_Update))
     {
        // Begin interrupt Timer3 100ms code
-			if(  flagCompleteTask == 1)
-			{
-				
-				
-			  send_frame_completeTask.Header = 0xFFAA;
-				send_frame_completeTask.FunctionCode = 0xC0;
-				send_frame_completeTask.AGVID = 1;
-				send_frame_completeTask.CompleteTask = 'C';
-			/*	send_frame_completeTask.noValue1 = 0;
-				send_frame_completeTask.noValue2 = 0;
-				send_frame_completeTask.noValue3 = 0;
-				send_frame_completeTask.noValue4 = 0;
-				send_frame_completeTask.noValue5 = 0;  */
-				
-				send_frame_completeTask.EndOfFrame = 0x0A0D;
-				UART_SendData((uint8_t *) &send_frame_completeTask ,sizeof(send_frame_completeTask)) ;
-				flagCompleteTask = 0;
-			}
+
 	/*		else
 			{
 			  send_frame.Header = 0xFFAA;
@@ -381,9 +382,9 @@ void TurnRight()
   Run_Motor(RIGHT_MOTOR, 0); 
 	delay_ms(250);
 	
-	Run_Motor(LEFT_MOTOR,45);
+	Run_Motor(LEFT_MOTOR,47);
 	Run_Motor(RIGHT_MOTOR,0);
-	delay_ms(1000);
+	delay_ms(900);
 	
 /*	 line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
 	while(pos_right < 11.5 || pos_left >-11.5)
@@ -398,9 +399,29 @@ void TurnRight()
 	while(line_position < 650 || line_position > 1350)
 	{
 		 line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
-	  Run_Motor(LEFT_MOTOR,45);
+	  Run_Motor(LEFT_MOTOR,47);
   	Run_Motor(RIGHT_MOTOR,0);
-	}         
+	}        
+	Run_Motor(LEFT_MOTOR,0);
+	Run_Motor(RIGHT_MOTOR,0);
+	delay_ms(100);
+	
+  	line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+	while(line_position !=1000)
+	{
+		if(line_position > 1000) 
+		{   	line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+	      Run_Motor(LEFT_MOTOR,0);
+	      Run_Motor(RIGHT_MOTOR,40);
+        delay_ms(40);			
+		}
+		else if(line_position < 1000)
+		{   	line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+				Run_Motor(LEFT_MOTOR,40);
+		    Run_Motor(RIGHT_MOTOR,0);
+			  delay_ms(40);		
+		}	
+	}
 	//delay_ms(50);
 //	Run_Motor(LEFT_MOTOR,0);
 	//Run_Motor(RIGHT_MOTOR,0);
@@ -426,7 +447,7 @@ void TurnLeft()
 	
 	Run_Motor(LEFT_MOTOR,0);   // - 39
 	Run_Motor(RIGHT_MOTOR,47);
-	delay_ms(1000);
+	delay_ms(1100);
 	
 	
 	/*while(pos_right < 11.5 || pos_left >-11.5)
@@ -442,6 +463,29 @@ void TurnLeft()
 	   Run_Motor(LEFT_MOTOR,0);
   	 Run_Motor(RIGHT_MOTOR,47);
 	}
+	
+		Run_Motor(LEFT_MOTOR,0);
+	Run_Motor(RIGHT_MOTOR,0);
+	delay_ms(100);
+	
+	line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+	while(line_position !=1000)
+	{
+		line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+		if(line_position > 1000) 
+		{
+	      Run_Motor(LEFT_MOTOR,0);
+	      Run_Motor(RIGHT_MOTOR,40);	
+			delay_ms(40);
+		}
+		else if(line_position < 1000)
+		{
+				Run_Motor(LEFT_MOTOR,40);
+		    Run_Motor(RIGHT_MOTOR,0);
+			delay_ms(40);
+		}	
+	}
+	
 	//delay_ms(50);
 	
 	//	Run_Motor(LEFT_MOTOR,0);
@@ -503,7 +547,26 @@ void Reverse()
 	Run_Motor(LEFT_MOTOR, 0);
 	Run_Motor(RIGHT_MOTOR, 0);
 	delay_ms(250);
-		
+	
+  line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+	while(line_position !=1000)
+	{
+		line_position = QTRSensorsReadCalibrated(QTR_ReadCalibValue);
+		if(line_position > 1000) 
+		{
+	      Run_Motor(LEFT_MOTOR,0);
+	      Run_Motor(RIGHT_MOTOR,45);	
+			delay_ms(50);
+		}
+		else if(line_position < 1000)
+		{
+				Run_Motor(LEFT_MOTOR,45);
+		    Run_Motor(RIGHT_MOTOR,0);
+			delay_ms(50);
+		}	
+	}
+
+	
 	PIDflag = 1;
 	//delay_ms(1000);
 }
@@ -707,7 +770,8 @@ void RunPath()
 							else if(pre_Orient == 'E')
 								   pre_Orient = 'W';
           StopAGV();
-          Pick(); 			 
+          Pick(); 	
+          PIDflag = 1;							
 		 }
 		 int indexCurrentNode = 0;
 		 for (int i = 2; i < PathByteCount_Run  - 2; i++)         
@@ -792,6 +856,7 @@ void RunPath()
 					 } 		
 					 flagPathRunComplete = 1; 
 					 flagCompleteTask = 1;
+					 
 					 break;
 			}
 			default: {PIDflag = 1;    break;}
