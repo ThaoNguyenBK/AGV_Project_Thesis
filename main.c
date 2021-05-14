@@ -16,6 +16,8 @@ void Pick(void);
 void Drop(void);
 void delay_PID(uint16_t time);
 
+
+uint8_t statusCompletePath = 0;
 uint8_t PIDflag_Turn_Right = 0;
 uint8_t PIDflag_Turn_Left = 0;
 uint16_t countDelay = 0;
@@ -59,14 +61,14 @@ uint8_t mess[6] ={ 0x11, 0x03, 0x00, 0x6B, 0x00, 0x03};
 uint8_t currentNode,preNode =0, initPickNode = 55;
 uint8_t pre_Orient = 'N';
 float static distanceToPreNode = 0;
-
+uint8_t unSendInformation = 1;
 //uint8_t PathByteCount_Run = 9;
 extern uint8_t PathByteCount_Run;
 //uint8_t Path_Run[] = {'N', '0', 'A',4,'L',0, 'L',42, 'L', 46,'R',55, 'B',25,'R',28 ,'G', 'N', '0'};
 //uint8_t Path_Run[] = {'N', '0', 'N',46,'E',50, 'N',8, 'W', 3,'S',11,'G', 'N', '0'};
 //uint8_t Path_Run[] ={'N', '0', 'N',55,'N',46,'G', 'N', '0'};
 extern uint8_t pathRunReceive[30];
-uint8_t Path_Run[30];
+uint8_t Path_Run[40];
 	                  // 'N', '0', 'A', 46, 'A', 25, 'A',4,'L',0, 'L',21,'G', 'N', '0'};
 char initExitNode = 55;
 uint8_t test = 0;
@@ -138,6 +140,7 @@ uint16_t QTR_ReadCalibValue[5];
 float pos_left = 0,pos_right=0;
 float test_bks ;
 												
+
 												
 char lcdconvertstring[10];	
 double lcdhienthi = 23.00;
@@ -216,7 +219,7 @@ int main(void)
 	//LCD_Puts("STM32F407VGT6");
 	LCD_Puts(lcdconvertstring);
 	LCD_NewLine(2);
-	LCD_Puts("I2C: PA1 - PA2");
+	LCD_Puts("AGV 1");
 	LCD_NewLine(3);
 	LCD_Puts("Con Di Thua Thien");
 	LCD_NewLine(4);    
@@ -253,7 +256,7 @@ int main(void)
 							    Path_Run[i] = pathRunReceive[i];          //luu path nhan duoc vao path_run
 							}	
 							flagPathReceived = 0;
-						  flagPathRunComplete = 0; 	
+						  flagPathRunComplete = 0; 
 				 } 
 				 if (TM_MFRC522_Check(CardID) == MI_OK)     // them vao && flagCheckRFID == 0 OR ket hop voi preCurrentNode
 				 {
@@ -273,17 +276,11 @@ int main(void)
 	 }
    if(flag_10ms == 10)
 	 {
-		 
 				flag_10ms = 0;			
 	 }
 	 if(flag_100ms == 100) // Truyen nhan UART
 	 {  
-		    //distanceToPreNode +=  ENC_Position(TIM5, 363); 
-				//LCD_Clear();
-				//char s[] = "Ab";
-				//LCD_Puts("abcd");
-				flag_100ms = 0;
-				
+			flag_100ms = 0;
 	 }
   }
 }
@@ -298,11 +295,12 @@ void TIM6_DAC_IRQHandler()	// Overrides the weak implementation of the IRQ in th
 	
 				v_left = ENC_Velocity(ENCL_TIM,363);	//PD12 PD 13
 				v_left_filter = LowpassFilter(v_left,LEFT_MOTOR);
+	      if(PIDflag == 1)
 				distanceToPreNode +=v_left/100;
 				v_right = ENC_Velocity(ENCR_TIM,363);	//PA0 PA1
 				v_right_filter = LowpassFilter(v_right,RIGHT_MOTOR);
 
-			//	v_lift = ENC_Velocity(TIM8,374);
+			  //	v_lift = ENC_Velocity(TIM8,374);
 				
 				v_measure = (v_left_filter+v_right_filter)/2;
 			  
@@ -320,20 +318,41 @@ void TIM2_IRQHandler()
     // Checks whether the TIM2 interrupt has occurred or not
     if (TIM_GetITStatus(TIM2, TIM_IT_Update))
     {
-       // Begin interrupt Timer3 1000ms code
-
+       // Begin interrupt Timer3 100ms code
 			  send_frame.Header = 0xFFAA;
 				send_frame.FunctionCode = 0xA0;
 				send_frame.AGVID = 1;
 				send_frame.Velocity= v_measure;
-			//	send_frame.Udk= udk;
 				send_frame.Line_Position = line_position;
-		//		send_frame.delta_Udk = 0;
 			  send_frame.CurrentNode = currentNode;
 			  send_frame.currentOrient = pre_Orient;
 		    send_frame.distanceToPreNode = distanceToPreNode;
 				send_frame.EndOfFrame = 0x0A0D;
 				UART_SendData((uint8_t *) &send_frame ,sizeof(send_frame)) ;
+			  
+			  //delay_ms(20);
+        if(statusCompletePath == 1 && flagPathReceived == 0)
+				{   
+					  delay_ms(50);
+				    send_frame_completeTask.Header = 0xFFAA;
+			      send_frame_completeTask.FunctionCode = 0xE0;
+			      send_frame_completeTask.AGVID = 1;
+		       	send_frame_completeTask.CompleteTask = 'C';
+			      send_frame_completeTask.EndOfFrame = 0x0A0D;
+		        UART_SendData((uint8_t *) &send_frame_completeTask ,sizeof(send_frame_completeTask));
+				}
+			  else if(statusCompletePath == 2 && flagPathReceived == 0)
+				{
+					  delay_ms(50);
+				    send_frame_completeTask.Header = 0xFFAA;
+			      send_frame_completeTask.FunctionCode = 0xE1;
+			      send_frame_completeTask.AGVID = 1;
+			      send_frame_completeTask.CompleteTask = 'C';
+			      send_frame_completeTask.EndOfFrame = 0x0A0D;
+		        UART_SendData((uint8_t *) &send_frame_completeTask ,sizeof(send_frame_completeTask));
+				}
+				
+
 			  
         // Clears the TIM2 interrupt pending bit
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
@@ -342,7 +361,7 @@ void TIM2_IRQHandler()
 
 void TurnRight()
 {   
-	
+  distanceToPreNode = 0;	
 	PIDflag = 0;
 	if(PIDflag == 0) flagCheckRFID = 0; 
 
@@ -350,7 +369,7 @@ void TurnRight()
   Run_Motor(RIGHT_MOTOR, 0); 
 	delay_ms(250);
 	
-	Run_Motor(LEFT_MOTOR, 35);
+	Run_Motor(LEFT_MOTOR,36);
   Run_Motor(RIGHT_MOTOR, 0); 
 	
   delay_ms(1500);
@@ -371,6 +390,7 @@ void TurnRight()
 
 void TurnLeft()
 { 
+	distanceToPreNode = 0;
 	PIDflag = 0;
 	if(PIDflag == 0) flagCheckRFID = 0; 
 
@@ -379,7 +399,7 @@ void TurnLeft()
 	delay_ms(250);
 	
 	Run_Motor(LEFT_MOTOR, 0);
-  Run_Motor(RIGHT_MOTOR, 35); 
+  Run_Motor(RIGHT_MOTOR, 36); 
 	
   delay_ms(1500);
 
@@ -716,8 +736,8 @@ void RunPath()
 					 {
 					   StopAGV();
              initPickNode = currentNode;
-						
-						
+						 
+						 statusCompletePath = 1;
 					 } 
 				   else if( Path_Run[PathByteCount_Run - 2] == 'D')
 					 {
@@ -734,17 +754,10 @@ void RunPath()
 						  StopAGV();
 						  Drop(); 
 							StopAGV();
+ 
+							statusCompletePath = 2;
 					 } 		
-					  if( flagPathRunComplete == 0 )
-						 {
-						    send_frame_completeTask.Header = 0xFFAA;
-				        send_frame_completeTask.FunctionCode = 0xC0;
-				        send_frame_completeTask.AGVID = 1;
-				        send_frame_completeTask.CompleteTask = 'C';
-				        send_frame_completeTask.EndOfFrame = 0x0A0D;
-				        UART_SendData((uint8_t *) &send_frame_completeTask ,sizeof(send_frame_completeTask));
-						 }
-					 
+	 	 
 					 flagPathRunComplete = 1; 
 
 					 break;
@@ -764,3 +777,4 @@ void delay_PID(uint16_t time)
 				PIDflag = 1;
 			}
 }
+

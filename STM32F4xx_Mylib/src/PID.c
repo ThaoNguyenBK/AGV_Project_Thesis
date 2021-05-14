@@ -152,8 +152,8 @@ void PID_Line(float x_measure,float udk)
    	 if (out_line > udk) out_line  = udk;
   	 else if (out_line  < -udk) out_line  = -udk;
 	   
-     int rightMotorSpeed = udk + 2 + out_line/1.5;       //1.5       
-	   int leftMotorSpeed = udk - out_line/1.5;  		
+     int rightMotorSpeed = udk + 2 + out_line/1.6;       //1.5       
+	   int leftMotorSpeed = udk - out_line/1.6;  		
 	
 	   Run_Motor(LEFT_MOTOR,leftMotorSpeed);
 	   Run_Motor(RIGHT_MOTOR,rightMotorSpeed);
